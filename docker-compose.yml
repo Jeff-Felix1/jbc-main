@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:admin@db:5432/admin
+      - JWT_SECRET=55dc78aacc765d08cd4344486cf75876ce7d61e49b5caa365a3d45b9751b12f5
+    depends_on:
+      - db
+    volumes:
+      - ./prisma:/app/prisma # Para refletir mudanças no schema.prisma
+    command: ["sh", "-c", "npx prisma migrate deploy && npm start"]
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432" # Opcional em produção
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=admin
+    volumes:
+      - pgdata:/var/lib/postgresql/data # Persistência dos dados
+
+volumes:
+  pgdata:
