@@ -44,7 +44,7 @@ export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
-    limit: 10,
+    limit: 100,
     total: 0,
     totalPages: 1,
   });
