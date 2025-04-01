@@ -130,8 +130,8 @@ export default function ClientDetailsPage() {
           <p><strong>Banco:</strong> {client.banco}</p>
           <p><strong>Descrição:</strong> {client.descricao || 'Não informada'}</p>
           <p>
-            <strong>Data de Nascimento:</strong>{' '}
-            {new Date(client.dataNascimento).toLocaleDateString()}
+           <strong>Data de Nascimento:</strong>{' '}
+          {client.dataNascimento} {/* Simples, sem formatação */}
           </p>
           <p>
             <strong>Valor Disponível:</strong> R${' '}
