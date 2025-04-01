@@ -23,6 +23,7 @@ export default function HomePage() {
   // Funções de navegação
   const goToClients = () => router.push("/clients");
   const goToUsers = () => router.push("/users");
+  const goToHistorico = () => router.push("/history"); // Nova função para o link Histórico
 
   // Função de logout
   const handleLogout = () => {
@@ -67,7 +68,7 @@ export default function HomePage() {
     }
   }, [isAdmin, token]);
 
-  // Se não for admin, mostrar mensagem de acesso restrito
+  // Se não for admin, exibir mensagem de acesso restrito
   if (!isAdmin) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -124,6 +125,7 @@ export default function HomePage() {
     );
   }
 
+  // Dashboard administrativo com cabeçalho atualizado
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Cabeçalho */}
@@ -149,6 +151,12 @@ export default function HomePage() {
                 className="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
                 Usuários
+              </button>
+              <button
+                onClick={goToHistorico}
+                className="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Histórico
               </button>
               {user && (
                 <button

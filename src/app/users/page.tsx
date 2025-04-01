@@ -132,6 +132,7 @@ export default function UsersPage() {
           >
             Adicionar
           </button>
+          
         </div>
 
         {loading ? (

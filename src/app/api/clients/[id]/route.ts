@@ -2,24 +2,14 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { authenticate } from '../../../middleware/auth';
 
+// GET: Buscar um cliente por ID
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await authenticate(request);
-    if (authResult instanceof NextResponse) return authResult;
-
-    const { user } = authResult;
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não autenticado' },
-        { status: 401 }
-      );
-    }
-
-    const clientId = parseInt(params.id);
+    const { id } = await context.params;
+    const clientId = parseInt(id);
 
     if (isNaN(clientId)) {
       return NextResponse.json(
@@ -42,12 +32,8 @@ export async function GET(
         descricao: true,
         userId: true,
         createdAt: true,
-        updatedAt: true, // Incluído para ser retornado
-        user: {
-          select: {
-            email: true,
-          },
-        },
+        updatedAt: true,
+        user: { select: { email: true } },
         contratos: true,
       },
     });
@@ -59,42 +45,33 @@ export async function GET(
       );
     }
 
-    if (!user.role || (user.role !== 'admin' && client.userId !== user.id)) {
-      return NextResponse.json(
-        { error: 'Você não tem permissão para acessar este cliente' },
-        { status: 403 }
-      );
-    }
+    // Formatar a data para evitar problemas de fuso horário
+    const responseData = {
+      ...client,
+      // Formatar a data como YYYY-MM-DD para evitar problemas de fuso horário
+      dataNascimento: client.dataNascimento instanceof Date 
+        ? client.dataNascimento.toISOString().split('T')[0]
+        : client.dataNascimento,
+    };
 
-    return NextResponse.json(client);
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Erro ao buscar cliente:', error);
-    let errorMessage = 'Erro interno no servidor';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro interno no servidor' },
+      { status: 500 }
+    );
   }
 }
 
+// PUT: Atualizar um cliente por ID
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await authenticate(request);
-    if (authResult instanceof NextResponse) return authResult;
-
-    const { user } = authResult;
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não autenticado' },
-        { status: 401 }
-      );
-    }
-
-    const clientId = parseInt(params.id);
+    const { id } = await context.params;
+    const clientId = parseInt(id);
 
     if (isNaN(clientId)) {
       return NextResponse.json(
@@ -103,9 +80,30 @@ export async function PUT(
       );
     }
 
+    const authResult = await authenticate(request);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
+    }
+
     const existingClient = await prisma.client.findUnique({
       where: { id: clientId },
-      select: { userId: true },
+      select: {
+        id: true,
+        cpf: true,
+        nome: true,
+        dataNascimento: true,
+        valorDisponivel: true,
+        status: true,
+        telefone: true,
+        banco: true,
+        descricao: true,
+        userId: true,
+      },
     });
 
     if (!existingClient) {
@@ -115,15 +113,7 @@ export async function PUT(
       );
     }
 
-    if (!user.role || (user.role !== 'admin' && existingClient.userId !== user.id)) {
-      return NextResponse.json(
-        { error: 'Você não tem permissão para atualizar este cliente' },
-        { status: 403 }
-      );
-    }
-
     const body = await request.json();
-
     const {
       cpf,
       nome,
@@ -133,26 +123,64 @@ export async function PUT(
       telefone,
       banco,
       descricao,
-      contrato,
     } = body;
+
+    const updateData: any = {};
+    if (cpf !== undefined) updateData.cpf = cpf;
+    if (nome !== undefined) updateData.nome = nome;
+    
+    // Corrigir tratamento da data para evitar problemas de fuso horário
+    if (dataNascimento !== undefined) {
+      // Certifique-se de usar apenas a parte da data (YYYY-MM-DD)
+      // e adicionar um horário fixo para evitar problemas de fuso horário
+      const dateParts = dataNascimento.split('T')[0].split('-');
+      const year = parseInt(dateParts[0]);
+      const month = parseInt(dateParts[1]) - 1; // JavaScript months are 0-indexed
+      const day = parseInt(dateParts[2]);
+      
+      // Criar uma data com horário fixo em UTC (12:00:00)
+      updateData.dataNascimento = new Date(Date.UTC(year, month, day, 12, 0, 0));
+    }
+    
+    if (valorDisponivel !== undefined)
+      updateData.valorDisponivel =
+        typeof valorDisponivel === 'string'
+          ? parseFloat(valorDisponivel)
+          : valorDisponivel;
+    if (status !== undefined) updateData.status = status;
+    if (telefone !== undefined) updateData.telefone = telefone;
+    if (banco !== undefined) updateData.banco = banco;
+    if (descricao !== undefined) updateData.descricao = descricao;
+    updateData.updatedAt = new Date();
+
+    // Registrar alterações no histórico
+    const historyEntries = [];
+    for (const key in updateData) {
+      if (key === 'updatedAt') continue; // Ignorar o campo updatedAt
+      const oldValue = existingClient[key]?.toString() || null;
+      const newValue = updateData[key]?.toString() || null;
+      if (oldValue !== newValue) {
+        historyEntries.push({
+          clientId,
+          field: key,
+          oldValue,
+          newValue,
+          userId: user.id,
+          createdAt: new Date(),
+        });
+      }
+    }
+
+    // Se houver alterações, registrar no histórico
+    if (historyEntries.length > 0) {
+      await prisma.clientHistory.createMany({
+        data: historyEntries,
+      });
+    }
 
     const updatedClient = await prisma.client.update({
       where: { id: clientId },
-      data: {
-        cpf: cpf ? cpf : undefined,
-        nome: nome ? nome : undefined,
-        dataNascimento: dataNascimento ? new Date(dataNascimento) : undefined,
-        valorDisponivel: valorDisponivel
-          ? typeof valorDisponivel === 'string'
-            ? parseFloat(valorDisponivel)
-            : valorDisponivel
-          : undefined,
-        status: status ? status : undefined,
-        telefone: telefone !== undefined ? telefone : undefined,
-        banco: banco ? banco : undefined,
-        descricao: descricao !== undefined ? descricao : undefined,
-        updatedAt: new Date(), // Atualizado automaticamente ao modificar
-      },
+      data: updateData,
       select: {
         id: true,
         cpf: true,
@@ -165,84 +193,39 @@ export async function PUT(
         descricao: true,
         userId: true,
         createdAt: true,
-        updatedAt: true, // Incluído para ser retornado
-        user: {
-          select: {
-            email: true,
-          },
-        },
+        updatedAt: true,
+        user: { select: { email: true } },
         contratos: true,
       },
     });
 
-    if (contrato) {
-      await prisma.contrato.create({
-        data: {
-          dataContrato: new Date(contrato.dataContrato),
-          valorContrato: contrato.valorContrato,
-          parcelas: contrato.parcelas,
-          juros: contrato.juros,
-          clientId: clientId,
-        },
-      });
+    // Formatar a data na resposta para evitar problemas de fuso horário
+    const responseData = {
+      ...updatedClient,
+      dataNascimento: updatedClient.dataNascimento instanceof Date 
+        ? updatedClient.dataNascimento.toISOString().split('T')[0]
+        : updatedClient.dataNascimento,
+    };
 
-      const clientWithNewContract = await prisma.client.findUnique({
-        where: { id: clientId },
-        select: {
-          id: true,
-          cpf: true,
-          nome: true,
-          dataNascimento: true,
-          valorDisponivel: true,
-          status: true,
-          telefone: true,
-          banco: true,
-          descricao: true,
-          userId: true,
-          createdAt: true,
-          updatedAt: true, // Incluído para ser retornado
-          user: {
-            select: {
-              email: true,
-            },
-          },
-          contratos: true,
-        },
-      });
-
-      return NextResponse.json(clientWithNewContract);
-    }
-
-    return NextResponse.json(updatedClient);
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Erro ao atualizar cliente:', error);
-    let errorMessage = 'Erro interno no servidor';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Erro interno no servidor' },
+      { status: 500 }
+    );
   }
 }
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const authResult = await authenticate(request);
-    if (authResult instanceof NextResponse) return authResult;
+    const { id } = await context.params;
+    const clientId = parseInt(id);
 
-    const { user } = authResult;
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Usuário não autenticado' },
-        { status: 401 }
-      );
-    }
-
-    const clientId = parseInt(params.id);
-
+    // Verificar se o ID é válido
     if (isNaN(clientId)) {
       return NextResponse.json(
         { error: 'ID de cliente inválido' },
@@ -250,43 +233,48 @@ export async function DELETE(
       );
     }
 
-    const existingClient = await prisma.client.findUnique({
-      where: { id: clientId },
-      select: { userId: true },
-    });
+    // Autenticar o usuário
+    const authResult = await authenticate(request);
+    if (authResult instanceof NextResponse) return authResult;
+    const { user } = authResult;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Usuário não autenticado' },
+        { status: 401 }
+      );
+    }
 
-    if (!existingClient) {
+    // Verificar se o usuário é administrador
+    if (user.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Acesso negado. Apenas administradores podem excluir clientes.' },
+        { status: 403 }
+      );
+    }
+
+    // Verificar se o cliente existe
+    const client = await prisma.client.findUnique({
+      where: { id: clientId },
+    });
+    if (!client) {
       return NextResponse.json(
         { error: 'Cliente não encontrado' },
         { status: 404 }
       );
     }
 
-    if (!user.role || (user.role !== 'admin' && existingClient.userId !== user.id)) {
-      return NextResponse.json(
-        { error: 'Você não tem permissão para excluir este cliente' },
-        { status: 403 }
-      );
-    }
-
-    await prisma.contrato.deleteMany({
-      where: { clientId },
-    });
-
+    // Excluir o cliente
     await prisma.client.delete({
       where: { id: clientId },
     });
 
-    return NextResponse.json(
-      { message: 'Cliente excluído com sucesso' },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: 'Cliente excluído com sucesso' });
   } catch (error) {
-    console.error('Erro ao excluir cliente:', error);
-    let errorMessage = 'Erro interno no servidor';
-    if (error instanceof Error) {
-      errorMessage = error.message;
-    }
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    // Logar o erro de forma segura, mesmo que seja null ou undefined
+    console.error('Erro ao excluir cliente:', error || 'Erro desconhecido');
+    return NextResponse.json(
+      { error: 'Erro interno no servidor' },
+      { status: 500 }
+    );
   }
 }

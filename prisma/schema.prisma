@@ -7,38 +7,52 @@ generator client {
   provider = "prisma-client-js"
 }
 
+model ClientHistory {
+  id        Int      @id @default(autoincrement())
+  clientId  Int
+  field     String
+  oldValue  String?
+  newValue  String?
+  userId    Int
+  user      User     @relation("ClientHistoryToUser", fields: [userId], references: [id])
+  client    Client   @relation("ClientHistoryToClient", fields: [clientId], references: [id])
+  createdAt DateTime @default(now())
+}
+
 model Client {
-  id              Int       @id @default(autoincrement())
-  cpf             String    @unique
+  id              Int             @id @default(autoincrement())
+  cpf             String          @unique
   nome            String
   dataNascimento  DateTime
-  valorDisponivel Decimal   @db.Decimal(10,2)
+  valorDisponivel Decimal         @db.Decimal(10, 2)
   status          String
-  telefone        String?   
+  telefone        String?
   banco           String
   descricao       String?
-  userId          Int       
-  user            User      @relation(fields: [userId], references: [id])
+  userId          Int
+  user            User            @relation(fields: [userId], references: [id])
   contratos       Contrato[]
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime? @updatedAt // Tornando opcional com "?"
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime?       @updatedAt // Tornando opcional com "?"
+  clientHistories ClientHistory[] @relation("ClientHistoryToClient")
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
-  email     String   @unique
-  password  String
-  role      String
-  clients   Client[]
-  createdAt DateTime @default(now())
+  id              Int             @id @default(autoincrement())
+  email           String          @unique
+  password        String
+  role            String
+  clients         Client[]
+  createdAt       DateTime        @default(now())
+  clientHistories ClientHistory[] @relation("ClientHistoryToUser")
 }
 
 model Contrato {
   id            Int      @id @default(autoincrement())
   dataContrato  DateTime
-  valorContrato Decimal  @db.Decimal(10,2)
+  valorContrato Decimal  @db.Decimal(10, 2)
   parcelas      Int
-  juros         Decimal  @db.Decimal(10,2)
+  juros         Decimal  @db.Decimal(10, 2)
   clientId      Int
   client        Client   @relation(fields: [clientId], references: [id])
   createdAt     DateTime @default(now())

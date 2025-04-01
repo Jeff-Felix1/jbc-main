@@ -74,13 +74,6 @@ export default function CreateClientPage() {
     }
   };
 
-  // Função para adicionar 1 dia à data
-  const adjustDateByOneDay = (dateString: string): string => {
-    const date = new Date(dateString);
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().split('T')[0]; // Retorna YYYY-MM-DD
-  };
-
   // Envia o formulário para a API
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,9 +91,6 @@ export default function CreateClientPage() {
         throw new Error('Token de autenticação não encontrado');
       }
 
-      // Ajusta a data de nascimento adicionando 1 dia
-      const adjustedDate = adjustDateByOneDay(formData.dataNascimento);
-
       const response = await fetch('/api/clients', {
         method: 'POST',
         headers: {
@@ -109,7 +99,6 @@ export default function CreateClientPage() {
         },
         body: JSON.stringify({
           ...formData,
-          dataNascimento: adjustedDate, // Envia a data ajustada no formato YYYY-MM-DD
           valorDisponivel: parseFloat(formData.valorDisponivel),
         }),
       });

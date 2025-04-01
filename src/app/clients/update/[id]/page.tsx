@@ -38,7 +38,7 @@ export default function UpdateClientPage() {
   const [formData, setFormData] = useState({
     cpf: '',
     nome: '',
-    dataNascimento: '', // Formato YYYY-MM-DD
+    dataNascimento: '',
     valorDisponivel: '',
     telefone: '',
     status: '',
@@ -55,7 +55,24 @@ export default function UpdateClientPage() {
     }
   }, [isAuthenticated, router]);
 
-  // Função para buscar o cliente pelo ID
+  // Função para corrigir o formato da data
+  const formatDateForInput = (dateString: string) => {
+    // Se a data estiver no formato ISO ou similar, vamos garantir que não haja alteração no dia
+    if (!dateString) return '';
+    
+    try {
+      // Split the date string to avoid timezone issues
+      const parts = dateString.split('T')[0].split('-');
+      if (parts.length !== 3) return dateString;
+      
+      return parts.join('-'); // YYYY-MM-DD format for date input
+    } catch (e) {
+      console.error("Erro ao formatar data:", e);
+      return dateString;
+    }
+  };
+
+  // Busca os dados do cliente
   const fetchClient = async () => {
     try {
       const response = await fetch(`/api/clients/${id}`, {
@@ -72,7 +89,7 @@ export default function UpdateClientPage() {
       setFormData({
         cpf: data.cpf,
         nome: data.nome,
-        dataNascimento: data.dataNascimento.split('T')[0], // Extrai YYYY-MM-DD
+        dataNascimento: formatDateForInput(data.dataNascimento), // Aplicando a correção aqui
         valorDisponivel: data.valorDisponivel.toString(),
         status: data.status,
         telefone: data.telefone || '',
@@ -86,14 +103,13 @@ export default function UpdateClientPage() {
     }
   };
 
-  // Carrega o cliente quando o componente é montado
   useEffect(() => {
     if (token && id) {
       fetchClient();
     }
   }, [token, id]);
 
-  // Função para formatar CPF
+  // Formatação do CPF
   const formatCPF = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{0,3})(\d{0,3})(\d{0,3})(\d{0,2})$/);
@@ -108,7 +124,7 @@ export default function UpdateClientPage() {
     return value;
   };
 
-  // Função para formatar telefone
+  // Formatação do telefone
   const formatPhone = (value: string) => {
     const cleaned = value.replace(/\D/g, '');
     const match = cleaned.match(/^(\d{0,2})(\d{0,5})(\d{0,4})$/);
@@ -134,14 +150,7 @@ export default function UpdateClientPage() {
     }
   };
 
-  // Função para adicionar 1 dia à data
-  const adjustDateByOneDay = (dateString: string): string => {
-    const date = new Date(dateString);
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().split('T')[0]; // Retorna YYYY-MM-DD
-  };
-
-  // Envia o formulário para a API
+  // Envia o formulário
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -158,8 +167,14 @@ export default function UpdateClientPage() {
         throw new Error('Token de autenticação não encontrado');
       }
 
-      // Ajusta a data de nascimento adicionando 1 dia
-      const adjustedDate = adjustDateByOneDay(formData.dataNascimento);
+      // Garantir que estamos enviando a data exatamente como está no input,
+      // sem permitir que o JavaScript faça qualquer ajuste de timezone
+      const formDataToSend = {
+        ...formData,
+        valorDisponivel: parseFloat(formData.valorDisponivel),
+        // Enviamos a data exatamente como está no input, sem converter para Date
+        dataNascimento: formData.dataNascimento
+      };
 
       const response = await fetch(`/api/clients/${id}`, {
         method: 'PUT',
@@ -167,38 +182,22 @@ export default function UpdateClientPage() {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          ...formData,
-          dataNascimento: adjustedDate, // Envia a data ajustada no formato YYYY-MM-DD
-          valorDisponivel: parseFloat(formData.valorDisponivel),
-        }),
+        body: JSON.stringify(formDataToSend),
       });
 
       if (!response.ok) {
-        let errorMessage = 'Erro ao atualizar cliente';
-        try {
-          const errorData = await response.json();
-          console.error('Resposta de erro da API:', errorData);
-          if (errorData && 'error' in errorData) {
-            errorMessage = errorData.error;
-          }
-        } catch (jsonError) {
-          const errorText = await response.text();
-          errorMessage = errorText || 'Erro desconhecido na resposta da API';
-        }
-        throw new Error(errorMessage);
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erro ao atualizar cliente');
       }
 
       router.push('/clients');
     } catch (error) {
-      console.error('Erro ao atualizar cliente:', error);
-      setError(error instanceof Error ? error.message : 'Erro ao atualizar cliente. Tente novamente.');
+      setError(error instanceof Error ? error.message : 'Erro ao atualizar cliente');
     } finally {
       setLoading(false);
     }
   };
 
-  // Renderiza "Carregando..." enquanto verifica autenticação ou busca dados
   if (!isAuthenticated() || loading || !client) {
     return <div className="p-8 text-center">Carregando...</div>;
   }
@@ -217,12 +216,10 @@ export default function UpdateClientPage() {
 
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md">
         <div className="space-y-6">
-          {/* Seção de Informações Pessoais */}
+          {/* Informações Pessoais */}
           <div className="border-b pb-4">
             <h2 className="text-lg font-semibold mb-4 text-gray-700">Informações Pessoais</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Campo Nome */}
               <div className="col-span-1 md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -235,13 +232,10 @@ export default function UpdateClientPage() {
                   name="nome"
                   value={formData.nome}
                   onChange={handleChange}
-                  placeholder="Nome completo"
                   className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
-
-              {/* Campo CPF */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -254,13 +248,10 @@ export default function UpdateClientPage() {
                   name="cpf"
                   value={formData.cpf}
                   onChange={handleChange}
-                  placeholder="000.000.000-00"
                   className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
-
-              {/* Campo Data de Nascimento */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -277,8 +268,6 @@ export default function UpdateClientPage() {
                   required
                 />
               </div>
-
-              {/* Campo Telefone */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -291,12 +280,9 @@ export default function UpdateClientPage() {
                   name="telefone"
                   value={formData.telefone}
                   onChange={handleChange}
-                  placeholder="(00) 00000-0000"
                   className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
-
-              {/* Campo Status */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -309,7 +295,6 @@ export default function UpdateClientPage() {
                   name="status"
                   value={formData.status}
                   onChange={handleChange}
-                  placeholder="Digite o status"
                   className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
@@ -317,12 +302,10 @@ export default function UpdateClientPage() {
             </div>
           </div>
 
-          {/* Seção de Informações Financeiras */}
+          {/* Informações Financeiras */}
           <div className="border-b pb-4">
             <h2 className="text-lg font-semibold mb-4 text-gray-700">Informações Financeiras</h2>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Campo Valor Disponível */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -335,14 +318,11 @@ export default function UpdateClientPage() {
                   name="valorDisponivel"
                   value={formData.valorDisponivel}
                   onChange={handleChange}
-                  placeholder="R$ 0,00"
                   step="0.01"
                   className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
               </div>
-
-              {/* Campo Banco */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   <div className="flex items-center">
@@ -355,7 +335,6 @@ export default function UpdateClientPage() {
                   name="banco"
                   value={formData.banco}
                   onChange={handleChange}
-                  placeholder="Nome do banco"
                   className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                   required
                 />
@@ -363,11 +342,9 @@ export default function UpdateClientPage() {
             </div>
           </div>
 
-          {/* Seção de Informações Adicionais */}
+          {/* Informações Adicionais */}
           <div>
             <h2 className="text-lg font-semibold mb-4 text-gray-700">Informações Adicionais</h2>
-
-            {/* Campo Descrição */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 <div className="flex items-center">
@@ -379,7 +356,6 @@ export default function UpdateClientPage() {
                 name="descricao"
                 value={formData.descricao}
                 onChange={handleChange}
-                placeholder="Descrição do cliente (opcional)"
                 className="block w-full p-2 border border-gray-300 rounded-md bg-yellow-50 focus:ring-blue-500 focus:border-blue-500"
                 rows={4}
               />
@@ -387,14 +363,12 @@ export default function UpdateClientPage() {
           </div>
         </div>
 
-        {/* Mensagem de erro */}
         {error && (
           <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
             <p className="text-red-500">{error}</p>
           </div>
         )}
 
-        {/* Botões de ação */}
         <div className="mt-6 flex justify-between">
           <button
             type="button"
@@ -403,17 +377,7 @@ export default function UpdateClientPage() {
           >
             Cancelar
           </button>
-
           <div className="flex space-x-4">
-            {/* Botão para debug (remova em produção) */}
-            <button
-              type="button"
-              onClick={() => console.log('Estado de autenticação:', { token, user, isAuth: isAuthenticated() })}
-              className="bg-gray-300 text-black px-4 py-2 rounded-md hover:bg-gray-400"
-            >
-              Verificar Auth
-            </button>
-
             <button
               type="submit"
               disabled={loading}

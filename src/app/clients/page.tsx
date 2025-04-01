@@ -27,7 +27,7 @@ interface Client {
   user: { email: string };
   dataNascimento: string;
   createdAt: string;
-  updatedAt: string; // Adicionado
+  updatedAt: string;
   valorDisponivel: number;
 }
 
@@ -55,6 +55,8 @@ export default function ClientsPage() {
     createdEndDate: '',
     cpf: '',
     nome: '',
+    status: '',
+    banco: '',
   });
 
   // Função para buscar clientes na API com filtros
@@ -70,10 +72,8 @@ export default function ClientsPage() {
       if (filters.createdEndDate) url.searchParams.set('createdEndDate', filters.createdEndDate);
       if (filters.cpf) url.searchParams.set('cpf', filters.cpf);
       if (filters.nome) url.searchParams.set('nome', filters.nome);
-
-      if (!isAdmin() && user?.id) {
-        url.searchParams.set('userId', user.id.toString());
-      }
+      if (filters.status) url.searchParams.set('status', filters.status);
+      if (filters.banco) url.searchParams.set('banco', filters.banco);
 
       const response = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
@@ -101,6 +101,7 @@ export default function ClientsPage() {
     }
   };
 
+  // Carrega os clientes ao montar o componente ou quando os filtros/paginação mudam
   useEffect(() => {
     if (token) {
       fetchClients();
@@ -109,27 +110,41 @@ export default function ClientsPage() {
     }
   }, [token, pagination.page, pagination.limit, filters]);
 
+  // Função para logout
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-  const handleDelete = async (clientId: number) => {
-    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
-    try {
-      const response = await fetch(`/api/clients/${clientId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!response.ok) throw new Error('Erro ao excluir cliente');
-      setClients(clients.filter((client) => client.id !== clientId));
-      alert('Cliente excluído com sucesso!');
-    } catch (error) {
-      console.error('Erro ao excluir cliente:', error);
-      alert('Erro ao excluir cliente. Tente novamente.');
-    }
-  };
+const handleDelete = async (clientId: number) => {
+  if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+  try {
+    const response = await fetch(`/api/clients/${clientId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
+    if (!response.ok) {
+      let errorMessage = 'Erro ao excluir cliente';
+      // Verificar se a resposta é JSON antes de tentar parseá-la
+      if (response.headers.get('Content-Type')?.includes('application/json')) {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+      } else {
+        errorMessage = await response.text() || errorMessage;
+      }
+      throw new Error(errorMessage);
+    }
+
+    setClients(clients.filter((client) => client.id !== clientId));
+    alert('Cliente excluído com sucesso!');
+  } catch (error) {
+    console.error('Erro ao excluir cliente:', error);
+    alert(error instanceof Error ? error.message : 'Erro ao excluir cliente. Tente novamente.');
+  }
+};
+
+  // Função para aplicar filtros
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
     setPagination((prev) => ({ ...prev, page: 1 }));
@@ -141,10 +156,31 @@ export default function ClientsPage() {
       {/* Cabeçalho */}
       <div className="flex justify-between items-center mb-6">
         <div>
+        
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-sm text-gray-500">Usuário: {user?.email}</p>
         </div>
         <div className="flex gap-4">
+        <button
+      onClick={() => router.push('/')}
+      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 mr-2"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M15 19l-7-7 7-7"
+        />
+      </svg>
+      Voltar
+    </button>
           <button
             onClick={() => router.push('/clients/create')}
             className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
@@ -228,6 +264,26 @@ export default function ClientsPage() {
               placeholder="Digite o nome"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Status</label>
+            <input
+              type="text"
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+              placeholder="Digite o status"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Banco</label>
+            <input
+              type="text"
+              value={filters.banco}
+              onChange={(e) => setFilters({ ...filters, banco: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+              placeholder="Digite o banco"
+            />
+          </div>
         </div>
         <div className="mt-4">
           <button
@@ -259,13 +315,15 @@ export default function ClientsPage() {
                 >
                   <PencilIcon className="h-5 w-5" />
                 </button>
-                <button
-                  onClick={() => handleDelete(client.id)}
-                  className="bg-red-500 text-white p-1 rounded"
-                  title="Excluir"
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
+                {isAdmin() && (
+                  <button
+                    onClick={() => handleDelete(client.id)}
+                    className="bg-red-500 text-white p-1 rounded"
+                    title="Excluir"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                )}
               </div>
               <h3 className="font-bold text-lg flex items-center">
                 <UserIcon className="h-5 w-5 mr-2" />
@@ -290,6 +348,10 @@ export default function ClientsPage() {
               <p className="text-gray-600 flex items-center">
                 <BanknotesIcon className="h-5 w-5 mr-2" />
                 Valor Disponível: {client.valorDisponivel.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+              </p>
+              <p className="text-gray-600 flex items-center">
+                <DocumentTextIcon className="h-5 w-5 mr-2" />
+                Status: {client.status}
               </p>
               <p className="text-gray-600 flex items-center">
                 <DocumentTextIcon className="h-5 w-5 mr-2" />

@@ -1,3 +1,4 @@
+//src/app/api/clients/route.js
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { authenticate } from '../../middleware/auth';
@@ -27,15 +28,33 @@ export async function GET(request: Request) {
     const cpf = url.searchParams.get('cpf');
     const nome = url.searchParams.get('nome');
     const userId = url.searchParams.get('userId');
-
-    let whereClause = user.role === 'admin' ? {} : { userId: user.id };
-
+    const status = url.searchParams.get('status');
+    const banco = url.searchParams.get('banco');
+    //let whereClause = user.role === 'admin' ? {} : { userId: user.id }; // Vendedores viam apenas os seus clientes
+    let whereClause = {}; // Aqui vendedores podem ver entre eles
     if (startDate) {
       whereClause = {
         ...whereClause,
         dataNascimento: {
           ...whereClause.dataNascimento,
           gte: new Date(startDate),
+        },
+      };
+    }
+
+    if (status) {
+      whereClause = {
+        ...whereClause,
+        status: status,
+      };
+    }
+    
+    if (banco) {
+      whereClause = {
+        ...whereClause,
+        banco: {
+          contains: banco,
+          mode: 'insensitive', // Busca case-insensitive
         },
       };
     }
@@ -181,11 +200,23 @@ export async function POST(request: Request) {
       );
     }
 
+    // Ajustar dataNascimento para 13:00 UTC
+    const dataNascimento = new Date(body.dataNascimento);
+    dataNascimento.setUTCHours(13, 0, 0, 0);
+
+    // Ajustar dataContrato (se existir) para 13:00 UTC
+    const dataContrato = body.contrato?.dataContrato
+      ? new Date(body.contrato.dataContrato)
+      : undefined;
+    if (dataContrato) {
+      dataContrato.setUTCHours(13, 0, 0, 0);
+    }
+
     const newClient = await prisma.client.create({
       data: {
         cpf: body.cpf,
         nome: body.nome,
-        dataNascimento: new Date(body.dataNascimento),
+        dataNascimento: dataNascimento,
         valorDisponivel: parseFloat(body.valorDisponivel),
         status: body.status,
         telefone: body.telefone,
@@ -197,7 +228,7 @@ export async function POST(request: Request) {
         contratos: body.contrato
           ? {
               create: {
-                dataContrato: new Date(body.contrato.dataContrato),
+                dataContrato: dataContrato,
                 valorContrato: body.contrato.valorContrato,
                 parcelas: body.contrato.parcelas,
                 juros: body.contrato.juros,
@@ -218,7 +249,7 @@ export async function POST(request: Request) {
         descricao: true,
         userId: true,
         createdAt: true,
-        updatedAt: true, // Incluído para ser retornado
+        updatedAt: true,
         user: {
           select: {
             email: true,
