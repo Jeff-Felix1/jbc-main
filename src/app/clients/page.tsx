@@ -385,7 +385,7 @@ const handleDelete = async (clientId: number) => {
           }
           className="border p-2 rounded"
         >
-          {[10, 20, 50, 100].map((size) => (
+          {[100, 200, 500, 1000].map((size) => (
             <option key={size} value={size}>
               {size} por página
             </option>
