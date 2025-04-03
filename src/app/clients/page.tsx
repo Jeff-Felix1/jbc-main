@@ -15,7 +15,6 @@ import {
   EyeIcon,
 } from '@heroicons/react/24/outline';
 
-// Definição das interfaces para tipagem
 interface Client {
   id: number;
   nome: string;
@@ -31,6 +30,11 @@ interface Client {
   valorDisponivel: number;
 }
 
+interface User {
+  id: number;
+  email: string;
+}
+
 interface Pagination {
   page: number;
   limit: number;
@@ -42,6 +46,7 @@ export default function ClientsPage() {
   const router = useRouter();
   const { token, logout, user, isAdmin } = useAuthStore();
   const [clients, setClients] = useState<Client[]>([]);
+  const [users, setUsers] = useState<User[]>([]); // Lista de vendedores
   const [pagination, setPagination] = useState<Pagination>({
     page: 1,
     limit: 100,
@@ -57,9 +62,10 @@ export default function ClientsPage() {
     nome: '',
     status: '',
     banco: '',
+    telefone: '', // Novo filtro por telefone
+    userId: user?.role === 'admin' ? 'all' : user?.id.toString() || '', // Default para usuário autenticado
   });
 
-  // Função para buscar clientes na API com filtros
   const fetchClients = async () => {
     try {
       const url = new URL(`/api/clients`, window.location.origin);
@@ -74,6 +80,8 @@ export default function ClientsPage() {
       if (filters.nome) url.searchParams.set('nome', filters.nome);
       if (filters.status) url.searchParams.set('status', filters.status);
       if (filters.banco) url.searchParams.set('banco', filters.banco);
+      if (filters.telefone) url.searchParams.set('telefone', filters.telefone);
+      if (filters.userId) url.searchParams.set('userId', filters.userId);
 
       const response = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${token}` },
@@ -86,6 +94,7 @@ export default function ClientsPage() {
 
       const data = await response.json();
       setClients(data.data || []);
+      setUsers(data.users || []); // Define a lista de vendedores
       setPagination({
         page: data.page || 1,
         limit: data.limit || 10,
@@ -101,7 +110,6 @@ export default function ClientsPage() {
     }
   };
 
-  // Carrega os clientes ao montar o componente ou quando os filtros/paginação mudam
   useEffect(() => {
     if (token) {
       fetchClients();
@@ -110,41 +118,38 @@ export default function ClientsPage() {
     }
   }, [token, pagination.page, pagination.limit, filters]);
 
-  // Função para logout
   const handleLogout = () => {
     logout();
     router.push('/login');
   };
 
-const handleDelete = async (clientId: number) => {
-  if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
-  try {
-    const response = await fetch(`/api/clients/${clientId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-    });
+  const handleDelete = async (clientId: number) => {
+    if (!confirm('Tem certeza que deseja excluir este cliente?')) return;
+    try {
+      const response = await fetch(`/api/clients/${clientId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    if (!response.ok) {
-      let errorMessage = 'Erro ao excluir cliente';
-      // Verificar se a resposta é JSON antes de tentar parseá-la
-      if (response.headers.get('Content-Type')?.includes('application/json')) {
-        const errorData = await response.json();
-        errorMessage = errorData.error || errorMessage;
-      } else {
-        errorMessage = await response.text() || errorMessage;
+      if (!response.ok) {
+        let errorMessage = 'Erro ao excluir cliente';
+        if (response.headers.get('Content-Type')?.includes('application/json')) {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } else {
+          errorMessage = await response.text() || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
-      throw new Error(errorMessage);
+
+      setClients(clients.filter((client) => client.id !== clientId));
+      alert('Cliente excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error);
+      alert(error instanceof Error ? error.message : 'Erro ao excluir cliente. Tente novamente.');
     }
+  };
 
-    setClients(clients.filter((client) => client.id !== clientId));
-    alert('Cliente excluído com sucesso!');
-  } catch (error) {
-    console.error('Erro ao excluir cliente:', error);
-    alert(error instanceof Error ? error.message : 'Erro ao excluir cliente. Tente novamente.');
-  }
-};
-
-  // Função para aplicar filtros
   const handleFilter = (e: React.FormEvent) => {
     e.preventDefault();
     setPagination((prev) => ({ ...prev, page: 1 }));
@@ -153,34 +158,32 @@ const handleDelete = async (clientId: number) => {
 
   return (
     <div className="container mx-auto p-4">
-      {/* Cabeçalho */}
       <div className="flex justify-between items-center mb-6">
         <div>
-        
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-sm text-gray-500">Usuário: {user?.email}</p>
         </div>
         <div className="flex gap-4">
-        <button
-      onClick={() => router.push('/')}
-      className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center"
-    >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 mr-2"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M15 19l-7-7 7-7"
-        />
-      </svg>
-      Voltar
-    </button>
+          <button
+            onClick={() => router.push('/')}
+            className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 flex items-center"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 mr-2"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 19l-7-7 7-7"
+              />
+            </svg>
+            Voltar
+          </button>
           <button
             onClick={() => router.push('/clients/create')}
             className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
@@ -204,7 +207,6 @@ const handleDelete = async (clientId: number) => {
         </div>
       </div>
 
-      {/* Formulário de Filtros */}
       <form onSubmit={handleFilter} className="mb-6 p-4 bg-white rounded-lg shadow-md">
         <h2 className="text-xl font-semibold mb-4">Filtros</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -284,6 +286,31 @@ const handleDelete = async (clientId: number) => {
               placeholder="Digite o banco"
             />
           </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Telefone</label>
+            <input
+              type="text"
+              value={filters.telefone}
+              onChange={(e) => setFilters({ ...filters, telefone: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+              placeholder="Digite o telefone"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Vendedor</label>
+            <select
+              value={filters.userId}
+              onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+            >
+              <option value="all">Todos</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.email}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
         <div className="mt-4">
           <button
@@ -295,7 +322,6 @@ const handleDelete = async (clientId: number) => {
         </div>
       </form>
 
-      {/* Lista de Clientes */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {clients.length > 0 ? (
           clients.map((client) => (
@@ -376,7 +402,6 @@ const handleDelete = async (clientId: number) => {
         )}
       </div>
 
-      {/* Paginação */}
       <div className="mt-6 flex justify-between items-center">
         <select
           value={pagination.limit}

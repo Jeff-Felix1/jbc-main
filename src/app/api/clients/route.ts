@@ -1,4 +1,4 @@
-//src/app/api/clients/route.js
+// src/app/api/clients/route.js
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { authenticate } from '../../middleware/auth';
@@ -20,7 +20,6 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const page = parseInt(url.searchParams.get('page') || '1');
     const limit = parseInt(url.searchParams.get('limit') || '10');
-
     const startDate = url.searchParams.get('startDate');
     const endDate = url.searchParams.get('endDate');
     const createdStartDate = url.searchParams.get('createdStartDate');
@@ -30,8 +29,10 @@ export async function GET(request: Request) {
     const userId = url.searchParams.get('userId');
     const status = url.searchParams.get('status');
     const banco = url.searchParams.get('banco');
-    //let whereClause = user.role === 'admin' ? {} : { userId: user.id }; // Vendedores viam apenas os seus clientes
-    let whereClause = {}; // Aqui vendedores podem ver entre eles
+    const telefone = url.searchParams.get('telefone'); // Novo parâmetro para filtro por telefone
+
+    let whereClause = {};
+
     if (startDate) {
       whereClause = {
         ...whereClause,
@@ -54,7 +55,7 @@ export async function GET(request: Request) {
         ...whereClause,
         banco: {
           contains: banco,
-          mode: 'insensitive', // Busca case-insensitive
+          mode: 'insensitive',
         },
       };
     }
@@ -62,7 +63,6 @@ export async function GET(request: Request) {
     if (endDate) {
       const endDateTime = new Date(endDate);
       endDateTime.setHours(23, 59, 59, 999);
-
       whereClause = {
         ...whereClause,
         dataNascimento: {
@@ -85,7 +85,6 @@ export async function GET(request: Request) {
     if (createdEndDate) {
       const endDateTime = new Date(createdEndDate);
       endDateTime.setHours(23, 59, 59, 999);
-
       whereClause = {
         ...whereClause,
         createdAt: {
@@ -114,14 +113,25 @@ export async function GET(request: Request) {
       };
     }
 
-    if (userId && user.role === 'admin') {
+    if (telefone) {
+      whereClause = {
+        ...whereClause,
+        telefone: {
+          contains: telefone,
+          mode: 'insensitive',
+        },
+      };
+    }
+
+    // Lógica para filtro por vendedor
+    if (userId && userId !== 'all') {
       whereClause = {
         ...whereClause,
         userId: parseInt(userId),
       };
     }
 
-    const [clients, total] = await prisma.$transaction([
+    const [clients, total, users] = await prisma.$transaction([
       prisma.client.findMany({
         where: whereClause,
         skip: (page - 1) * limit,
@@ -138,7 +148,7 @@ export async function GET(request: Request) {
           descricao: true,
           userId: true,
           createdAt: true,
-          updatedAt: true, // Incluído para ser retornado
+          updatedAt: true,
           user: {
             select: {
               email: true,
@@ -151,6 +161,18 @@ export async function GET(request: Request) {
         },
       }),
       prisma.client.count({ where: whereClause }),
+      // Busca todos os usuários para o dropdown (apenas para vendedores e admins)
+      prisma.user.findMany({
+        where: {
+          role: {
+            in: ['vendedor', 'admin'],
+          },
+        },
+        select: {
+          id: true,
+          email: true,
+        },
+      }),
     ]);
 
     return NextResponse.json({
@@ -159,6 +181,7 @@ export async function GET(request: Request) {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      users, // Retorna a lista de usuários para o dropdown
     });
   } catch (error) {
     console.error('Erro ao listar clientes:', error);
@@ -200,11 +223,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Ajustar dataNascimento para 13:00 UTC
     const dataNascimento = new Date(body.dataNascimento);
     dataNascimento.setUTCHours(13, 0, 0, 0);
 
-    // Ajustar dataContrato (se existir) para 13:00 UTC
     const dataContrato = body.contrato?.dataContrato
       ? new Date(body.contrato.dataContrato)
       : undefined;
@@ -235,7 +256,7 @@ export async function POST(request: Request) {
               },
             }
           : undefined,
-        updatedAt: new Date(), // Incluído para consistência
+        updatedAt: new Date(),
       },
       select: {
         id: true,
