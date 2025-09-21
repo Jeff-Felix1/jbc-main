@@ -28,6 +28,7 @@ interface Client {
   createdAt: string;
   updatedAt: string;
   valorDisponivel: number;
+  lastModifier?: string | null;
 }
 
 interface User {
@@ -41,6 +42,8 @@ interface Pagination {
   total: number;
   totalPages: number;
 }
+
+
 
 export default function ClientsPage() {
   const router = useRouter();
@@ -207,115 +210,202 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      <form onSubmit={handleFilter} className="mb-6 p-4 bg-white rounded-lg shadow-md">
-        <h2 className="text-xl font-semibold mb-4">Filtros</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <form onSubmit={handleFilter} className="mb-6 p-6 bg-gray-50 rounded-lg shadow">
+        <h2 className="text-xl font-semibold mb-4 text-gray-800">Filtros</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* CPF */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Data de Nascimento (Início)</label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <IdentificationIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={filters.cpf}
+                onChange={(e) => setFilters({ ...filters, cpf: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="123.456.789-00"
+              />
+            </div>
           </div>
+
+          {/* Nome */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Data de Nascimento (Fim)</label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <UserIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={filters.nome}
+                onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Nome do cliente"
+              />
+            </div>
           </div>
+
+          {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Data de Criação (Início)</label>
-            <input
-              type="date"
-              value={filters.createdStartDate}
-              onChange={(e) => setFilters({ ...filters, createdStartDate: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <DocumentTextIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={filters.status}
+                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Status do cliente"
+              />
+            </div>
           </div>
+
+          {/* Banco */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Data de Criação (Fim)</label>
-            <input
-              type="date"
-              value={filters.createdEndDate}
-              onChange={(e) => setFilters({ ...filters, createdEndDate: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Banco</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <BanknotesIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={filters.banco}
+                onChange={(e) => setFilters({ ...filters, banco: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="Nome do banco"
+              />
+            </div>
           </div>
+
+          {/* Telefone */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">CPF</label>
-            <input
-              type="text"
-              value={filters.cpf}
-              onChange={(e) => setFilters({ ...filters, cpf: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              placeholder="Digite o CPF"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <PhoneIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="text"
+                value={filters.telefone}
+                onChange={(e) => setFilters({ ...filters, telefone: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                placeholder="(00) 00000-0000"
+              />
+            </div>
           </div>
+
+          {/* Vendedor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Nome</label>
-            <input
-              type="text"
-              value={filters.nome}
-              onChange={(e) => setFilters({ ...filters, nome: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              placeholder="Digite o nome"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vendedor</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <UserIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <select
+                value={filters.userId}
+                onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="all">Todos</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.email}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+
+          {/* Data de Nascimento (Início) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Status</label>
-            <input
-              type="text"
-              value={filters.status}
-              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              placeholder="Digite o status"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento (Início)</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <CalendarIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="date"
+                value={filters.startDate}
+                onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
+
+          {/* Data de Nascimento (Fim) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Banco</label>
-            <input
-              type="text"
-              value={filters.banco}
-              onChange={(e) => setFilters({ ...filters, banco: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              placeholder="Digite o banco"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data de Nascimento (Fim)</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <CalendarIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="date"
+                value={filters.endDate}
+                onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
+
+          {/* Data de Criação (Início) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Telefone</label>
-            <input
-              type="text"
-              value={filters.telefone}
-              onChange={(e) => setFilters({ ...filters, telefone: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-              placeholder="Digite o telefone"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data de Criação (Início)</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <CalendarIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="date"
+                value={filters.createdStartDate}
+                onChange={(e) => setFilters({ ...filters, createdStartDate: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
+
+          {/* Data de Criação (Fim) */}
           <div>
-            <label className="block text-sm font-medium text-gray-700">Vendedor</label>
-            <select
-              value={filters.userId}
-              onChange={(e) => setFilters({ ...filters, userId: e.target.value })}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
-            >
-              <option value="all">Todos</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.email}
-                </option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Data de Criação (Fim)</label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <CalendarIcon className="h-5 w-5 text-gray-400" />
+              </div>
+              <input
+                type="date"
+                value={filters.createdEndDate}
+                onChange={(e) => setFilters({ ...filters, createdEndDate: e.target.value })}
+                className="pl-10 pr-4 py-2 block w-full rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
           </div>
         </div>
-        <div className="mt-4">
+        <div className="mt-6 flex justify-end gap-4">
+          <button
+            type="button"
+            onClick={() => setFilters({
+              startDate: '',
+              endDate: '',
+              createdStartDate: '',
+              createdEndDate: '',
+              cpf: '',
+              nome: '',
+              status: '',
+              banco: '',
+              telefone: '',
+              userId: user?.role === 'admin' ? 'all' : user?.id.toString() || '',
+            })}
+            className="bg-gray-300 text-gray-800 px-4 py-2 rounded-md hover:bg-gray-400"
+          >
+            Limpar Filtros
+          </button>
           <button
             type="submit"
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
           >
             Filtrar
           </button>
@@ -395,6 +485,12 @@ export default function ClientsPage() {
                 <UserIcon className="h-5 w-5 mr-2" />
                 Criado por: {client.user.email}
               </p>
+              {client.lastModifier && (
+                <p className="text-gray-500 text-sm flex items-center">
+                  <PencilIcon className="h-5 w-5 mr-2" />
+                  Última modificação por: {client.lastModifier}
+                </p>
+              )}
             </div>
           ))
         ) : (

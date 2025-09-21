@@ -33,6 +33,25 @@ export default function LoginPage() {
     }
   };
 
+  const handleTestConnection = async () => {
+    console.log("Iniciando teste de conexão...");
+    setError("");
+    try {
+      const response = await fetch("/api/test-connection");
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Falha no teste de conexão");
+      }
+      alert(`Conexão bem-sucedida! Usuários encontrados: ${data.userCount}`);
+      console.log("Resultado do teste:", data);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido no teste";
+      setError(errorMessage);
+      console.error("Erro no teste de conexão:", err);
+      alert(`Erro no teste de conexão: ${errorMessage}`);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-2xl">
@@ -99,6 +118,15 @@ export default function LoginPage() {
             className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
           >
             Entrar
+          </button>
+
+          {/* Botão de Teste de Conexão */}
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            className="mt-2 w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          >
+            Testar Conexão
           </button>
         </form>
       </div>

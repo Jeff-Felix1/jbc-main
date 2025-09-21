@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { authenticate } from '../../../middleware/auth';
-import bcrypt from 'bcryptjs';
+
 
 /**
  * @swagger
@@ -66,6 +66,33 @@ import bcrypt from 'bcryptjs';
  *       500:
  *         description: Erro interno no servidor.
  */
+
+
+export async function GET(request, context) {
+  try {
+    const authResult = await authenticate(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+
+    const { params } = context;
+    const { id } = params;
+
+    const user = await prisma.user.findUnique({
+      where: { id: Number(id) },
+      select: { id: true, email: true, role: true },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'Usuário não encontrado.' }, { status: 404 });
+    }
+
+    return NextResponse.json(user);
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    return NextResponse.json({ error: 'Erro interno no servidor.' }, { status: 500 });
+  }
+}
 
 export async function DELETE(request, context) {
   try {
@@ -156,8 +183,7 @@ export async function PUT(request, context) {
     };
 
     if (password) {
-      // Se a senha for fornecida, faz o hash e a atualiza
-      updateData.password = await bcrypt.hash(password, 10);
+      updateData.password = password;
     }
 
     const updatedUser = await prisma.user.update({

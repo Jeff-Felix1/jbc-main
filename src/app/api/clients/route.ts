@@ -46,7 +46,10 @@ export async function GET(request: Request) {
     if (status) {
       whereClause = {
         ...whereClause,
-        status: status,
+        status: {
+          contains: status,
+          mode: 'insensitive',
+        },
       };
     }
     
@@ -175,8 +178,37 @@ export async function GET(request: Request) {
       }),
     ]);
 
+    const clientIds = clients.map(c => c.id);
+    const histories = await prisma.clientHistory.findMany({
+        where: {
+            clientId: { in: clientIds }
+        },
+        orderBy: {
+            createdAt: 'desc'
+        },
+        include: {
+            user: {
+                select: {
+                    email: true
+                }
+            }
+        }
+    });
+
+    const lastModifiers = new Map<number, string>();
+    histories.forEach(h => {
+        if (!lastModifiers.has(h.clientId)) {
+            lastModifiers.set(h.clientId, h.user.email);
+        }
+    });
+
+    const clientsWithLastModifier = clients.map(client => ({
+        ...client,
+        lastModifier: lastModifiers.get(client.id) || null
+    }));
+
     return NextResponse.json({
-      data: clients,
+      data: clientsWithLastModifier,
       total,
       page,
       limit,

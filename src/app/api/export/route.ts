@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
 import prisma from "../../lib/prisma";
 import * as ExcelJS from "exceljs";
-import bcrypt from "bcryptjs";
+import { authenticate } from "../../middleware/auth";
 
 interface ExportRequest {
-  adminEmail: string;
-  adminPassword: string;
   filters: {
     startDate?: string;
     endDate?: string;
@@ -18,27 +16,17 @@ interface ExportRequest {
 
 export async function POST(request: Request) {
   try {
+    const authResult = await authenticate(request);
+    if (authResult instanceof NextResponse) {
+      return authResult;
+    }
+    const { user } = authResult;
+
+    if (user.role !== 'admin') {
+      return NextResponse.json({ error: 'Acesso negado. Apenas administradores podem exportar dados.' }, { status: 403 });
+    }
+
     const body: ExportRequest = await request.json();
-
-    // Validação dos campos obrigatórios
-    if (!body.adminEmail || !body.adminPassword) {
-      return NextResponse.json(
-        { error: "Credenciais de administrador são obrigatórias" },
-        { status: 400 }
-      );
-    }
-
-    // Verificar admin
-    const admin = await prisma.user.findUnique({
-      where: { email: body.adminEmail, role: "admin" },
-    });
-
-    if (!admin || !(await bcrypt.compare(body.adminPassword, admin.password))) {
-      return NextResponse.json(
-        { error: "Credenciais administrativas inválidas" },
-        { status: 401 }
-      );
-    }
 
     // Construir filtros
     const whereClause: any = {};
@@ -115,6 +103,7 @@ export async function POST(request: Request) {
       { header: "ID", key: "id", width: 10 },
       { header: "Nome", key: "nome", width: 30 },
       { header: "CPF", key: "cpf", width: 15 },
+      { header: "Data Nascimento", key: "dataNascimento", width: 20 },
       { header: "Telefone", key: "telefone", width: 15 },
       { header: "Vendedor ID", key: "sellerId", width: 12 },
       { header: "Vendedor Email", key: "sellerEmail", width: 25 },
@@ -133,6 +122,7 @@ export async function POST(request: Request) {
         id: client.id,
         nome: client.nome,
         cpf: client.cpf,
+        dataNascimento: client.dataNascimento,
         telefone: client.telefone || "Não informado",
         sellerId: client.user.id,
         sellerEmail: client.user.email,
@@ -147,6 +137,7 @@ export async function POST(request: Request) {
     // Formatação
     worksheet.getColumn("valorDisponivel").numFmt = '"R$"#,##0.00'; // Formatação monetária
     worksheet.getColumn("createdAt").numFmt = "dd/mm/yyyy hh:mm"; // Formatação de data
+    worksheet.getColumn("dataNascimento").numFmt = "dd/mm/yyyy"; // Formatação de data
 
     const buffer = await workbook.xlsx.writeBuffer();
 

@@ -18,13 +18,11 @@ interface User {
   email: string;
 }
 
+
+
 export default function ExportPage() {
   const router = useRouter();
   const { token } = useAuthStore();
-  const [credentials, setCredentials] = useState({
-    email: "",
-    password: "",
-  });
   const [filters, setFilters] = useState<ExportFilters>({});
   const [users, setUsers] = useState<User[]>([]);
   const [statuses, setStatuses] = useState<string[]>([]);
@@ -76,10 +74,11 @@ export default function ExportPage() {
 
       const response = await fetch("/api/export", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
-          adminEmail: credentials.email,
-          adminPassword: credentials.password,
           filters: {
             ...filters,
             userId: filters.userId === "" ? undefined : filters.userId, // Remove filtro se "Todos"
@@ -140,32 +139,6 @@ export default function ExportPage() {
       </div>
 
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="space-y-4 mb-8">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email Admin</label>
-            <input
-              type="email"
-              className="w-full p-2 border rounded"
-              value={credentials.email}
-              onChange={(e) =>
-                setCredentials({ ...credentials, email: e.target.value })
-              }
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-1">Senha Admin</label>
-            <input
-              type="password"
-              className="w-full p-2 border rounded"
-              value={credentials.password}
-              onChange={(e) =>
-                setCredentials({ ...credentials, password: e.target.value })
-              }
-            />
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
           <div>
             <label className="block text-sm font-medium mb-1">Data Inicial</label>

@@ -23,7 +23,9 @@ export default function HomePage() {
   // Funções de navegação
   const goToClients = () => router.push("/clients");
   const goToUsers = () => router.push("/users");
-  const goToHistorico = () => router.push("/history"); // Nova função para o link Histórico
+  const goToHistorico = () => router.push("/history");
+  const goToEstatisticas = () => router.push("/estatisticas");
+
 
   // Função de logout
   const handleLogout = () => {
@@ -157,6 +159,12 @@ export default function HomePage() {
                 className="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
               >
                 Histórico
+              </button>
+              <button
+                onClick={goToEstatisticas}
+                className="px-4 py-2 text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+              >
+                Estatisticas
               </button>
               {user && (
                 <button

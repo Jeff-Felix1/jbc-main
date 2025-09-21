@@ -130,16 +130,14 @@ export async function PUT(
     if (nome !== undefined) updateData.nome = nome;
     
     // Corrigir tratamento da data para evitar problemas de fuso horário
-    if (dataNascimento !== undefined) {
-      // Certifique-se de usar apenas a parte da data (YYYY-MM-DD)
-      // e adicionar um horário fixo para evitar problemas de fuso horário
-      const dateParts = dataNascimento.split('T')[0].split('-');
-      const year = parseInt(dateParts[0]);
-      const month = parseInt(dateParts[1]) - 1; // JavaScript months are 0-indexed
-      const day = parseInt(dateParts[2]);
-      
-      // Criar uma data com horário fixo em UTC (12:00:00)
-      updateData.dataNascimento = new Date(Date.UTC(year, month, day, 12, 0, 0));
+        if (dataNascimento !== undefined) {
+      const newDateString = dataNascimento.split('T')[0];
+      const oldDate = existingClient.dataNascimento || new Date(0);
+      const oldDateString = oldDate.toISOString().split('T')[0];
+
+      if (newDateString !== oldDateString) {
+        updateData.dataNascimento = new Date(`${newDateString}T12:00:00Z`);
+      }
     }
     
     if (valorDisponivel !== undefined)

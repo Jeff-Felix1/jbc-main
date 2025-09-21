@@ -1,7 +1,7 @@
 // src/app/api/login/route.ts
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import bcrypt from 'bcryptjs';
+
 import jwt from 'jsonwebtoken';
 
 interface User {
@@ -36,8 +36,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3. Verificação da senha com bcrypt
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    // 3. Verificação da senha (texto plano - APENAS PARA TESTE)
+    const isPasswordValid = (password === user.password);
     
     if (!isPasswordValid) {
       return NextResponse.json(

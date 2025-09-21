@@ -27,7 +27,10 @@ interface Client {
   descricao?: string;
   user: { email: string };
   contratos?: any[];
+  updatedAt?: string | null;
 }
+
+
 
 export default function UpdateClientPage() {
   const router = useRouter();
