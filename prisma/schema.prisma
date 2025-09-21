@@ -15,7 +15,7 @@ model ClientHistory {
   newValue  String?
   userId    Int
   user      User     @relation("ClientHistoryToUser", fields: [userId], references: [id])
-  client    Client   @relation("ClientHistoryToClient", fields: [clientId], references: [id])
+  client    Client   @relation("ClientHistoryToClient", fields: [clientId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
 
@@ -54,6 +54,6 @@ model Contrato {
   parcelas      Int
   juros         Decimal  @db.Decimal(10, 2)
   clientId      Int
-  client        Client   @relation(fields: [clientId], references: [id])
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
 }

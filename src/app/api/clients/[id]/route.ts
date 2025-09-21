@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { authenticate } from '../../../middleware/auth';
+import { Prisma } from '@prisma/client';
 
 // GET: Buscar um cliente por ID
 export async function GET(
@@ -130,13 +131,23 @@ export async function PUT(
     if (nome !== undefined) updateData.nome = nome;
     
     // Corrigir tratamento da data para evitar problemas de fuso horário
-        if (dataNascimento !== undefined) {
+    if (dataNascimento !== undefined) {
       const newDateString = dataNascimento.split('T')[0];
-      const oldDate = existingClient.dataNascimento || new Date(0);
-      const oldDateString = oldDate.toISOString().split('T')[0];
+      
+      // Check if the existing date is valid before using it
+      const oldDate = existingClient.dataNascimento;
+      let oldDateString = '';
+
+      if (oldDate && !isNaN(oldDate.getTime())) {
+        oldDateString = oldDate.toISOString().split('T')[0];
+      }
 
       if (newDateString !== oldDateString) {
-        updateData.dataNascimento = new Date(`${newDateString}T12:00:00Z`);
+        // Ensure the new date is valid before assigning
+        const newDate = new Date(`${newDateString}T12:00:00Z`);
+        if (!isNaN(newDate.getTime())) {
+          updateData.dataNascimento = newDate;
+        }
       }
     }
     
@@ -171,9 +182,11 @@ export async function PUT(
 
     // Se houver alterações, registrar no histórico
     if (historyEntries.length > 0) {
-      await prisma.clientHistory.createMany({
-        data: historyEntries,
-      });
+      for (const entry of historyEntries) {
+        await prisma.clientHistory.create({
+          data: entry,
+        });
+      }
     }
 
     const updatedClient = await prisma.client.update({
@@ -207,6 +220,16 @@ export async function PUT(
 
     return NextResponse.json(responseData);
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      const target = error.meta?.target as string[];
+      return NextResponse.json(
+        { 
+          error: `Violação de campo único. O valor no campo '${target?.join(', ')}' já existe.`,
+          details: target 
+        },
+        { status: 409 } // Conflict
+      );
+    }
     console.error('Erro ao atualizar cliente:', error);
     return NextResponse.json(
       { error: 'Erro interno no servidor' },

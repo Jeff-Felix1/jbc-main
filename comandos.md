@@ -40,7 +40,7 @@ Para fazer o deploy de uma nova versão da aplicação para o Cloud Run:
     Este comando usa o Cloud Build para criar uma imagem Docker a partir do seu código-fonte e a envia para o Artifact Registry.
 
     ```bash
-    gcloud builds submit --tag southamerica-east1-docker.pkg.dev/consigja-2025/cloud-run-source-deploy/consigja-app:latest .
+     
     ```
 
 2.  **Deploy da Imagem para o Cloud Run:**
@@ -49,3 +49,7 @@ Para fazer o deploy de uma nova versão da aplicação para o Cloud Run:
     ```bash
     gcloud run deploy consigja-app --image southamerica-east1-docker.pkg.dev/consigja-2025/cloud-run-source-deploy/consigja-app:latest --region southamerica-east1
     ```
+
+
+## Acessar banco de dados
+gcloud sql connect consigja-db --user=postgres --database=jbc
